@@ -44,9 +44,6 @@ from blivet import platform
 from blivet.size import Size
 from pyanaconda.i18n import _, N_
 
-import logging
-log = logging.getLogger("anaconda")
-
 class serial_opts(object):
     def __init__(self):
         self.speed = None
@@ -296,7 +293,7 @@ class BootLoader(object):
 
     @disk_order.setter
     def disk_order(self, order):
-        log.debug("new disk order: %s", order)
+        self.log.debug(3, "new disk order: %s", order)
         self._disk_order = order
         if self.disks:
             self._sort_disks()
@@ -307,7 +304,7 @@ class BootLoader(object):
             try:
                 idx = [d.name for d in self.disks].index(name)
             except ValueError:
-                log.error("bios order specified unknown disk %s", name)
+                self.log.debug(2, "bios order specified unknown disk %s", name)
                 continue
 
             self.disks.insert(0, self.disks.pop(idx))
@@ -332,7 +329,7 @@ class BootLoader(object):
         if image not in self.images:
             raise ValueError("new default image not in image list")
 
-        log.debug("new default image: %s", image)
+        self.log.debug(4, "new default image: %s", image)
         self._default_image = image
 
     @property
@@ -402,7 +399,7 @@ class BootLoader(object):
                                          % {"desc" : desc, "types" : ",".join(member_types)})
                     ret = False
 
-        log.debug("_is_valid_md(%s) returning %s", device.name, ret)
+        self.log.debug(5, "_is_valid_md(%s) returning %s", device.name, ret)
         return ret
 
     def _is_valid_disklabel(self, device, disklabel_types=None):
@@ -417,7 +414,7 @@ class BootLoader(object):
                                          % {"name" : device.name, "types" : types_str})
                     ret = False
 
-        log.debug("_is_valid_disklabel(%s) returning %s", device.name, ret)
+        self.log.debug(5, "_is_valid_disklabel(%s) returning %s", device.name, ret)
         return ret
 
     def _is_valid_format(self, device, format_types=None, mountpoints=None,
@@ -434,7 +431,7 @@ class BootLoader(object):
                                  % {"desc" : desc, "mountpoints" : ", ".join(mountpoints)})
             ret = False
 
-        log.debug("_is_valid_format(%s) returning %s", device.name, ret)
+        self.log.debug(5, "_is_valid_format(%s) returning %s", device.name, ret)
         return ret
 
     def _is_valid_size(self, device, desc=""):
@@ -465,7 +462,7 @@ class BootLoader(object):
 
             ret = False
 
-        log.debug("_is_valid_size(%s) returning %s", device.name, ret)
+        self.log.debug(5, "_is_valid_size(%s) returning %s", device.name, ret)
         return ret
 
     def _is_valid_location(self, device, max_end=None, desc=""):
@@ -479,7 +476,7 @@ class BootLoader(object):
                                      "the disk.") % {"desc": desc, "max_end": max_end})
                 ret = False
 
-        log.debug("_is_valid_location(%s) returning %s", device.name, ret)
+        self.log.debug(5, "_is_valid_location(%s) returning %s", device.name, ret)
         return ret
 
     def _is_valid_partition(self, device, primary=None, desc=""):
@@ -488,7 +485,7 @@ class BootLoader(object):
             self.errors.append(_("%s must be on a primary partition.") % desc)
             ret = False
 
-        log.debug("_is_valid_partition(%s) returning %s", device.name, ret)
+        self.log.debug(5, "_is_valid_partition(%s) returning %s", device.name, ret)
         return ret
 
     #
@@ -560,11 +557,11 @@ class BootLoader(object):
             return False
 
         if not self._device_type_match(device, constraint["device_types"]):
-            log.debug("stage1 device cannot be of type %s", device.type)
+            self.log.debug(5, "stage1 device cannot be of type %s", device.type)
             return False
 
         if _is_on_iscsi(device) and not _is_on_ibft(device):
-            log.debug("stage1 device cannot be on an iSCSI disk")
+            self.log.debug(5, "stage1 device cannot be on an iSCSI disk")
             return False
 
         description = self.device_description(device)
@@ -602,11 +599,11 @@ class BootLoader(object):
             valid = False
 
         if not self.stage2_bootable and not getattr(device, "bootable", True):
-            log.warning("%s not bootable", device.name)
+            self.log.debug(3, "%s not bootable", device.name)
 
         # XXX does this need to be here?
         if getattr(device.format, "label", None) in ("ANACONDA", "LIVE"):
-            log.info("ignoring anaconda boot disk")
+            self.log.debug(4, "ignoring anaconda boot disk")
             valid = False
 
         if early:
@@ -625,7 +622,7 @@ class BootLoader(object):
                                  "device.") % description)
             valid = False
 
-        log.debug("is_valid_stage1_device(%s) returning %s", device.name, valid)
+        self.log.debug(5, "is_valid_stage1_device(%s) returning %s", device.name, valid)
         return valid
 
     def set_stage1_device(self, devices):
@@ -725,7 +722,7 @@ class BootLoader(object):
                                  "device.") % _(self.stage2_description))
             valid = False
 
-        log.debug("is_valid_stage2_device(%s) returning %s", device.name, valid)
+        self.log.debug(5, "is_valid_stage2_device(%s) returning %s", device.name, valid)
         return valid
 
     #
@@ -1210,7 +1207,7 @@ class GRUB(BootLoader):
                           % {"label": image.label,
                              "grub_root": self.grub_device_name(image.device)})
 
-            log.info("bootloader.py: used boot args: %s ", args)
+            self.log.debug(4, "bootloader.py: used boot args: %s ", args)
             config.write(stanza)
 
     def write_device_map(self):
@@ -1236,12 +1233,12 @@ class GRUB(BootLoader):
             try:
                 os.rename(menu_lst, menu_lst + '.anacbak')
             except OSError as e:
-                log.error("failed to back up %s: %s", menu_lst, e)
+                self.log.debug(2, "failed to back up %s: %s", menu_lst, e)
 
         try:
             os.symlink(self._config_file, menu_lst)
         except OSError as e:
-            log.error("failed to create grub menu.lst symlink: %s", e)
+            self.log.debug(2, "failed to create grub menu.lst symlink: %s", e)
 
         # make symlink to grub.conf in /etc since that's where configs belong
         etc_grub = "%s/etc/%s" % (iutil.getSysroot(), self._config_file)
@@ -1249,12 +1246,12 @@ class GRUB(BootLoader):
             try:
                 os.unlink(etc_grub)
             except OSError as e:
-                log.error("failed to remove %s: %s", etc_grub, e)
+                self.log.debug(2, "failed to remove %s: %s", etc_grub, e)
 
         try:
             os.symlink("..%s" % self.config_file, etc_grub)
         except OSError as e:
-            log.error("failed to create /etc/grub.conf symlink: %s", e)
+            self.log.debug(2, "failed to create /etc/grub.conf symlink: %s", e)
 
     def write_config(self):
         """ Write bootloader configuration to disk. """
@@ -1502,7 +1499,7 @@ class GRUB2(GRUB):
         # this is going to cause problems for systems containing multiple
         # linux installations or even multiple boot entries with different
         # boot arguments
-        log.info("bootloader.py: used boot args: %s ", self.boot_args)
+        self.log.debug(4, "bootloader.py: used boot args: %s ", self.boot_args)
         defaults.write("GRUB_CMDLINE_LINUX=\"%s\"\n" % self.boot_args)
         defaults.write("GRUB_DISABLE_RECOVERY=\"true\"\n")
         #defaults.write("GRUB_THEME=\"/boot/grub2/themes/system/theme.txt\"\n")
@@ -1558,7 +1555,7 @@ class GRUB2(GRUB):
         try:
             self.write_password_config()
         except (BootLoaderError, OSError, RuntimeError) as e:
-            log.error("boot loader password setup failed: %s", e)
+            self.log.debug(2, "boot loader password setup failed: %s", e)
 
         # make sure the default entry is the OS we are installing
         if self.default is not None:
@@ -1567,12 +1564,12 @@ class GRUB2(GRUB):
                 default_index = self.images.index(self.default)
             except ValueError:
                 # pylint: disable=no-member
-                log.warning("Failed to find default image (%s), defaulting to 0", self.default.label)
+                self.log.debug(3, "Failed to find default image (%s), defaulting to 0", self.default.label)
                 default_index = 0
 
             rc = iutil.execInSysroot("grub2-set-default", [str(default_index)])
             if rc:
-                log.error("failed to set default menu entry to %s", productName)
+                self.log.debug(2, "failed to set default menu entry to %s", productName)
 
         # now tell grub2 to generate the main configuration file
         rc = iutil.execInSysroot("grub2-mkconfig",
@@ -1598,9 +1595,9 @@ class GRUB2(GRUB):
             else:
                 if flags.nombr:
                     grub_args.insert(0, '--grub-setup=/bin/true')
-                    log.info("bootloader.py: mbr update by grub2 disabled")
+                    self.log.debug(4, "bootloader.py: mbr update by grub2 disabled")
                 else:
-                    log.info("bootloader.py: mbr will be updated for grub2")
+                    self.log.debug(4, "bootloader.py: mbr will be updated for grub2")
 
             rc = iutil.execWithRedirect("grub2-install", grub_args,
                                         root=iutil.getSysroot(),
@@ -1671,7 +1668,7 @@ class GRUB2(GRUB):
                                  "deviceType": self.stage2_device.type}
 
         if error_msg and not biosboot:
-            log.error(error_msg)
+            self.log.debug(2, error_msg)
             self.errors.append(error_msg)
             ret = False
 
@@ -1695,11 +1692,11 @@ class EFIGRUB(GRUB2):
 
     def efibootmgr(self, *args, **kwargs):
         if flags.imageInstall or flags.dirInstall:
-            log.info("Skipping efibootmgr for image/directory install.")
+            self.log.debug(4, "Skipping efibootmgr for image/directory install.")
             return ""
 
         if "noefi" in flags.cmdline:
-            log.info("Skipping efibootmgr for noefi")
+            self.log.debug(4, "Skipping efibootmgr for noefi")
             return ""
 
         if kwargs.pop("capture", False):
@@ -1727,7 +1724,7 @@ class EFIGRUB(GRUB2):
                 slot_id = slot[4:8]
                 # slot_id is hex, we can't use .isint and use this regex:
                 if not re.match("^[0-9a-fA-F]+$", slot_id):
-                    log.warning("failed to parse efi boot slot (%s)", slot)
+                    self.log.debug(3, "failed to parse efi boot slot (%s)", slot)
                     continue
 
                 rc = self.efibootmgr("-b", slot_id, "-B")
@@ -1796,7 +1793,7 @@ class MacEFIGRUB(EFIGRUB):
         if os.path.exists(iutil.getSysroot() + "/usr/libexec/mactel-boot-setup"):
             rc = iutil.execInSysroot("/usr/libexec/mactel-boot-setup", [])
             if rc:
-                log.error("failed to configure Mac boot loader")
+                self.log.debug(2, "failed to configure Mac boot loader")
 
     def install(self, args=None):
         super(MacEFIGRUB, self).install()
@@ -1810,9 +1807,9 @@ class MacEFIGRUB(EFIGRUB):
             valid = False
 
         if hasattr(device.format, "name"):
-            log.debug("device.format.name is '%s'", device.format.name)
+            self.log.debug(5, "device.format.name is '%s'", device.format.name)
 
-        log.debug("MacEFIGRUB.is_valid_stage1_device(%s) returning %s", device.name, valid)
+        self.log.debug(5, "MacEFIGRUB.is_valid_stage1_device(%s) returning %s", device.name, valid)
         return valid
 
 
@@ -1847,7 +1844,7 @@ class YabootBase(BootLoader):
                 root_line = ""
 
             args.update(self.boot_args)
-            log.info("bootloader.py: used boot args: %s ", args)
+            self.log.debug(4, "bootloader.py: used boot args: %s ", args)
 
             stanza = ("image=%(boot_prefix)s%(kernel)s\n"
                       "\tlabel=%(label)s\n"
@@ -1928,7 +1925,7 @@ class Yaboot(YabootBase):
             try:
                 os.symlink("../boot/etc/yaboot.conf", etc_yaboot_conf)
             except OSError as e:
-                log.error("failed to create /etc/yaboot.conf symlink: %s", e)
+                self.log.debug(2, "failed to create /etc/yaboot.conf symlink: %s", e)
 
     def write_config(self):
         if not os.path.isdir(iutil.getSysroot() + self.config_dir):
@@ -1972,41 +1969,41 @@ class IPSeriesYaboot(Yaboot):
         if not can_touch_runtime_system("updatePowerPCBootList", touch_live=True):
             return
 
-        log.debug("updatePowerPCBootList: self.stage1_device.path = %s", self.stage1_device.path)
+        self.log.debug(5, "updatePowerPCBootList: self.stage1_device.path = %s", self.stage1_device.path)
 
         buf = iutil.execWithCapture("nvram",
                                     ["--print-config=boot-device"])
 
         if len(buf) == 0:
-            log.error("FAIL: nvram --print-config=boot-device")
+            self.log.debug(2, "FAIL: nvram --print-config=boot-device")
             return
 
         boot_list = buf.strip().split()
-        log.debug("updatePowerPCBootList: boot_list = %s", boot_list)
+        self.log.debug(5, "updatePowerPCBootList: boot_list = %s", boot_list)
 
         buf = iutil.execWithCapture("ofpathname",
                                     [self.stage1_device.path])
 
         if len(buf) > 0:
             boot_disk = buf.strip()
-            log.debug("updatePowerPCBootList: boot_disk = %s", boot_disk)
+            self.log.debug(5, "updatePowerPCBootList: boot_disk = %s", boot_disk)
         else:
-            log.error("FAIL: ofpathname %s", self.stage1_device.path)
+            self.log.debug(2, "FAIL: ofpathname %s", self.stage1_device.path)
             return
 
         # Place the disk containing the PReP partition first.
         # Remove all other occurances of it.
         boot_list = [boot_disk] + [x for x in boot_list if x != boot_disk]
 
-        log.debug("updatePowerPCBootList: updated boot_list = %s", boot_list)
+        self.log.debug(5, "updatePowerPCBootList: updated boot_list = %s", boot_list)
 
         update_value = "boot-device=%s" % " ".join(boot_list)
 
         rc = iutil.execWithRedirect("nvram", ["--update-config", update_value])
         if rc:
-            log.error("FAIL: nvram --update-config %s", update_value)
+            self.log.debug(2, "FAIL: nvram --update-config %s", update_value)
         else:
-            log.info("Updated PPC boot list with the command: nvram --update-config %s", update_value)
+            self.log.debug(4, "Updated PPC boot list with the command: nvram --update-config %s", update_value)
 
 
 class IPSeriesGRUB2(GRUB2):
@@ -2023,7 +2020,7 @@ class IPSeriesGRUB2(GRUB2):
 
     def install(self, args=None):
         if flags.leavebootorder:
-            log.info("leavebootorder passed as an option. Will not update the NVRAM boot list.")
+            self.log.debug(4, "leavebootorder passed as an option. Will not update the NVRAM boot list.")
         else:
             self.updateNVRAMBootList()
 
@@ -2034,17 +2031,17 @@ class IPSeriesGRUB2(GRUB2):
         if not can_touch_runtime_system("updateNVRAMBootList", touch_live=True):
             return
 
-        log.debug("updateNVRAMBootList: self.stage1_device.path = %s", self.stage1_device.path)
+        self.log.debug(5, "updateNVRAMBootList: self.stage1_device.path = %s", self.stage1_device.path)
 
         buf = iutil.execWithCapture("nvram",
                                     ["--print-config=boot-device"])
 
         if len(buf) == 0:
-            log.error("Failed to determine nvram boot device")
+            self.log.debug(2, "Failed to determine nvram boot device")
             return
 
         boot_list = buf.strip().replace("\"", "").split()
-        log.debug("updateNVRAMBootList: boot_list = %s", boot_list)
+        self.log.debug(5, "updateNVRAMBootList: boot_list = %s", boot_list)
 
         buf = iutil.execWithCapture("ofpathname",
                                     [self.stage1_device.path])
@@ -2052,7 +2049,7 @@ class IPSeriesGRUB2(GRUB2):
         if len(buf) > 0:
             boot_disk = buf.strip()
         else:
-            log.error("Failed to translate boot path into device name")
+            self.log.debug(2, "Failed to translate boot path into device name")
             return
 
         # Place the disk containing the PReP partition first.
@@ -2063,7 +2060,7 @@ class IPSeriesGRUB2(GRUB2):
 
         rc = iutil.execWithRedirect("nvram", ["--update-config", update_value])
         if rc:
-            log.error("Failed to update new boot device order")
+            self.log.debug(2, "Failed to update new boot device order")
 
     #
     # In addition to the normal grub configuration variable, add one more to set the size of the
@@ -2150,7 +2147,7 @@ class ZIPL(BootLoader):
             args.update(self.boot_args)
             if image.device.type == "btrfs subvolume":
                 args.update(["rootflags=subvol=%s" % image.device.name])
-            log.info("bootloader.py: used boot args: %s ", args)
+            self.log.debug(4, "bootloader.py: used boot args: %s ", args)
             stanza = ("[%(label)s]\n"
                       "\timage=%(boot_dir)s/%(kernel)s\n"
                       "%(initrd_line)s"
@@ -2244,7 +2241,7 @@ class EXTLINUX(BootLoader):
             if image.device.type == "btrfs subvolume":
                 args.update(["rootflags=subvol=%s" % image.device.name])
             args.update(self.boot_args)
-            log.info("bootloader.py: used boot args: %s ", args)
+            self.log.debug(4, "bootloader.py: used boot args: %s ", args)
 
             # extlinux labels cannot have spaces
             label = "%s(%s)" % (self.image_label(image), image.version)
@@ -2285,7 +2282,7 @@ class EXTLINUX(BootLoader):
             try:
                 os.symlink("../boot/%s" % self._config_file, etc_extlinux)
             except OSError as e:
-                log.warning("failed to create /etc/extlinux.conf symlink: %s", e)
+                self.log.debug(3, "failed to create /etc/extlinux.conf symlink: %s", e)
 
     def write_config(self):
         super(EXTLINUX, self).write_config()
@@ -2320,7 +2317,7 @@ def get_bootloader():
         cls = EXTLINUX
     else:
         cls = bootloader_by_platform.get(platform.platform.__class__, BootLoader)
-    log.info("bootloader %s on %s platform", cls.__name__, platform_name)
+    self.log.debug(4, "bootloader %s on %s platform", cls.__name__, platform_name)
     return cls()
 
 
@@ -2333,13 +2330,13 @@ def writeSysconfigKernel(storage, version, instClass):
     if not os.path.isfile(iutil.getSysroot() + kernel_file):
         kernel_file = "/boot/efi/EFI/%s/%s" % (instClass.efi_dir, kernel_basename)
         if not os.path.isfile(iutil.getSysroot() + kernel_file):
-            log.error("failed to recreate path to default kernel image")
+            self.log.debug(2, "failed to recreate path to default kernel image")
             return
 
     try:
         import rpm
     except ImportError:
-        log.error("failed to import rpm python module")
+        self.log.debug(2, "failed to import rpm python module")
         return
 
     ts = rpm.TransactionSet(iutil.getSysroot())
@@ -2347,7 +2344,7 @@ def writeSysconfigKernel(storage, version, instClass):
     try:
         h = next(mi)
     except StopIteration:
-        log.error("failed to get package name for default kernel")
+        self.log.debug(2, "failed to get package name for default kernel")
         return
 
     kernel = h.name.decode()
@@ -2379,7 +2376,7 @@ def writeBootLoaderFinal(storage, payload, instClass, ksdata):
     try:
         storage.bootloader.write()
     except BootLoaderError as e:
-        log.error("bootloader.write failed: %s", e)
+        self.log.debug(2, "bootloader.write failed: %s", e)
         if errorHandler.cb(e) == ERROR_RAISE:
             raise
 
@@ -2392,9 +2389,9 @@ def writeBootLoader(storage, payload, instClass, ksdata):
     """
     if not storage.bootloader.skip_bootloader:
         stage1_device = storage.bootloader.stage1_device
-        log.info("boot loader stage1 target device is %s", stage1_device.name)
+        self.log.debug(4, "boot loader stage1 target device is %s", stage1_device.name)
         stage2_device = storage.bootloader.stage2_device
-        log.info("boot loader stage2 target device is %s", stage2_device.name)
+        self.log.debug(4, "boot loader stage2 target device is %s", stage2_device.name)
 
     # Bridge storage EFI configuration to bootloader
     if hasattr(storage.bootloader, 'efi_dir'):
@@ -2402,7 +2399,7 @@ def writeBootLoader(storage, payload, instClass, ksdata):
 
     if isinstance(payload, RPMOSTreePayload):
         if storage.bootloader.skip_bootloader:
-            log.info("skipping boot loader install per user request")
+            self.log.debug(4, "skipping boot loader install per user request")
             return
         writeBootLoaderFinal(storage, payload, instClass, ksdata)
         return
@@ -2416,7 +2413,7 @@ def writeBootLoader(storage, payload, instClass, ksdata):
     kernel_versions += (f.split("/")[-1][8:] for f in rescue_versions)
 
     if not kernel_versions:
-        log.warning("no kernel was installed -- boot loader config unchanged")
+        self.log.debug(3, "no kernel was installed -- boot loader config unchanged")
         return
 
     # all the linux images' labels are based on the default image's
@@ -2437,7 +2434,7 @@ def writeBootLoader(storage, payload, instClass, ksdata):
     writeSysconfigKernel(storage, version, instClass)
 
     if storage.bootloader.skip_bootloader:
-        log.info("skipping boot loader install per user request")
+        self.log.debug(4, "skipping boot loader install per user request")
         return
 
     # now add an image for each of the other kernels
