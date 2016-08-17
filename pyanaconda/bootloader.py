@@ -1783,6 +1783,12 @@ class EFIGRUB1(EFIBase, GRUB):
     stage2_bootable = False
     stage2_max_end_mb = None
 
+    _efi_binary = "\\grub.efi"
+
+    def __init__(self):
+        super(EFIGRUB1, self).__init__()
+        self.efi_dir = 'BOOT'
+
     #
     # configuration
     #
@@ -1793,7 +1799,7 @@ class EFIGRUB1(EFIBase, GRUB):
 
             eg: HD(1,800,64000,faacb4ef-e361-455e-bd97-ca33632550c3)
         """
-        buf = self.efibootmgr("-v", stderr="/dev/tty5", capture=True)
+        buf = self.efibootmgr("-v", capture=True)
         matches = re.search(productName + r'\s+(HD\(.+?\))', buf)
         if matches and matches.groups():
             return matches.group(1)
