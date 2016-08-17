@@ -1677,7 +1677,10 @@ class GRUB2(GRUB):
 class EFIBase(object):
     @property
     def _config_dir(self):
-        return "efi/EFI/%s" % (self.efi_dir,) # pylint: disable=no-member
+        efi_dir = self.efi_dir
+        if flags.cmdline.get("force_efi_dir") is not None:
+            efi_dir = flags.cmdline.get("force_efi_dir")
+        return "efi/EFI/%s" % (efi_dir,) # pylint: disable=no-member
 
     def efibootmgr(self, *args, **kwargs):
         if flags.imageInstall or flags.dirInstall:
@@ -1782,6 +1785,12 @@ class EFIGRUB1(EFIBase, GRUB):
     stage2_is_valid_stage1 = False
     stage2_bootable = False
     stage2_max_end_mb = None
+
+    def __init__(self):
+        super(EFIGRUB1, self).__init__()
+        self.efi_dir = 'BOOT'
+        if flags.cmdline.get("force_efi_dir") is not None:
+            self.efi_dir = flags.cmdline.get("force_efi_dir")
 
     #
     # configuration
@@ -2370,7 +2379,10 @@ def writeSysconfigKernel(storage, version, instClass):
     kernel_basename = "vmlinuz-" + version
     kernel_file = "/boot/%s" % kernel_basename
     if not os.path.isfile(iutil.getSysroot() + kernel_file):
-        kernel_file = "/boot/efi/EFI/%s/%s" % (instClass.efi_dir, kernel_basename)
+        efi_dir = instClass.efi_dir
+        if flags.cmdline.get("force_efi_dir") is not None:
+            efi_dir = flags.cmdline.get("force_efi_dir")
+        kernel_file = "/boot/efi/EFI/%s/%s" % (efi_dir, kernel_basename)
         if not os.path.isfile(iutil.getSysroot() + kernel_file):
             log.error("failed to recreate path to default kernel image")
             return
