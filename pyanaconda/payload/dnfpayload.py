@@ -1159,18 +1159,24 @@ class DNFPayload(payload.PackagePayload):
     def postInstall(self):
         """Perform post-installation tasks."""
         # Write selected kickstart repos to target system
+        log.info("self.addOns: %s" % str(self.addOns))
         for ks_repo in (ks for ks in (self.getAddOnRepo(r) for r in self.addOns) if ks.install):
+            log.info("processing %s" % str(ks_repo))
             if ks_repo.baseurl.startswith("nfs://"):
                 log.info("Skip writing nfs repo %s to target system.", ks_repo.name)
                 continue
 
             try:
                 repo = self.getRepo(ks_repo.name)
+                log.info("repo = %s" % str(repo))
                 if not repo:
+                    log.info("not repo!")
                     continue
             except (dnf.exceptions.RepoError, KeyError):
+                log.info("RepoError or KeyError")
                 continue
             repo_path = pyanaconda.iutil.getSysroot() + YUM_REPOS_DIR + "%s.repo" % repo.id
+            log.info("repo_path = %s" % str(repo_path))
             try:
                 log.info("Writing %s.repo to target system.", repo.id)
                 self._writeDNFRepo(repo, repo_path)
