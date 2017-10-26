@@ -21,7 +21,7 @@ import os
 import copy
 from pyanaconda.flags import flags
 from pyanaconda.i18n import _, CN_
-from pyanaconda.users import cryptPassword, guess_username, check_username
+from pyanaconda.users import cryptPassword, guess_username, check_username, check_groupname
 
 from pyanaconda.ui.gui.spokes import NormalSpoke
 from pyanaconda.ui.gui import GUIObject
@@ -33,7 +33,7 @@ from pyanaconda.ui.gui.utils import blockedHandler, set_password_visibility
 from pyanaconda.ui.communication import hubQ
 
 from pyanaconda.constants import ANACONDA_ENVIRON, FIRSTBOOT_ENVIRON
-from pyanaconda.regexes import GECOS_VALID, GROUPNAME_VALID, GROUPLIST_FANCY_PARSE
+from pyanaconda.regexes import GECOS_VALID, GROUPLIST_FANCY_PARSE
 
 __all__ = ["UserSpoke", "AdvancedUserDialog"]
 
@@ -56,8 +56,9 @@ class AdvancedUserDialog(GUIObject, GUIDialogInputCheckHandler):
         # Check each group name in the list
         for group in groups_string.split(","):
             group_name = GROUPLIST_FANCY_PARSE.match(group).group('name')
-            if not GROUPNAME_VALID.match(group_name):
-                return _("Invalid group name: %s") % group_name
+            valid, message = check_groupname(group_name)
+            if not valid:
+                return message or _("Invalid group name.")
 
         return InputCheck.CHECK_OK
 
@@ -288,9 +289,7 @@ class UserSpoke(FirstbootSpokeMixIn, NormalSpoke, GUISpokeInputCheckHandler):
         self.pw_bar.add_offset_value("full", 4)
 
         # Configure the password policy, if available. Otherwise use defaults.
-        self.policy = self.data.anaconda.pwpolicy.get_policy("user")
-        if not self.policy:
-            self.policy = self.data.anaconda.PwPolicyData()
+        self.policy = self.data.anaconda.pwpolicy.get_policy("user", fallback_to_default=True)
 
         # indicate when the password was set by kickstart
         self._password_kickstarted = self.data.user.seen

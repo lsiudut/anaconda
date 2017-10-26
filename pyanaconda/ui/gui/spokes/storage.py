@@ -345,6 +345,7 @@ class StorageSpoke(NormalSpoke, StorageCheckHandler):
         # as Blivet GUI handles encryption per encrypted device, not globally.
         if self._get_selected_partitioning_method() == PartitioningMethod.BLIVET_GUI:
             self._encryption_revealer.set_reveal_child(False)
+            self._encrypted.set_active(False)
         else:
             self._encryption_revealer.set_reveal_child(True)
 
@@ -448,6 +449,12 @@ class StorageSpoke(NormalSpoke, StorageCheckHandler):
             self._ready = True
             hubQ.send_ready(self.__class__.__name__, True)
             return
+        if not flags.automatedInstall and not self.selected_disks:
+            log.debug("not executing storage, no disk selected")
+            StorageCheckHandler.errors = [_("No disks selected")]
+            self._ready = True
+            hubQ.send_ready(self.__class__.__name__, True)
+            return
         try:
             doKickstartStorage(self.storage, self.data, self.instclass)
         # ValueError is here because Blivet is returning ValueError from devices/lvm.py
@@ -506,7 +513,7 @@ class StorageSpoke(NormalSpoke, StorageCheckHandler):
     @property
     def completed(self):
         retval = (threadMgr.get(constants.THREAD_EXECUTE_STORAGE) is None and
-                  threadMgr.get(constants.THREAD_CHECK_STORAGE) is None and
+                  not self.checking_storage and
                   self.storage.root_device is not None and
                   not self.errors)
         return retval

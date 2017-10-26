@@ -1291,7 +1291,6 @@ def have_word_match(str1, str2):
 
     return all(word in str2 for word in str1_words)
 
-
 class DataHolder(dict):
     """ A dict that lets you also access keys using dot notation. """
     def __init__(self, **kwargs):
@@ -1309,7 +1308,6 @@ class DataHolder(dict):
 
     def copy(self):
         return DataHolder(**dict.copy(self))
-
 
 def xprogressive_delay():
     """ A delay generator, the delay starts short and gets longer
