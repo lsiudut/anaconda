@@ -516,6 +516,8 @@ class DNFPayload(payload.PackagePayload):
     def _configure(self):
         self._base = dnf.Base()
         conf = self._base.conf
+        log.info("self._base: %s" % str(self._base))
+        log.info("self._base.conf: %s" % str(self._base.conf))
         conf.cachedir = DNF_CACHE_DIR
         conf.pluginconfpath = DNF_PLUGINCONF_DIR
         conf.logdir = '/tmp/'
@@ -525,6 +527,7 @@ class DNFPayload(payload.PackagePayload):
         conf.prepend_installroot('persistdir')
 
         self._base.conf.substitutions.update_from_etc(conf.installroot)
+        print("conf.installroot: %s" % str(conf.installroot))
 
         # NSS won't survive the forking we do to shield out chroot during
         # transaction, disable it in RPM:
@@ -1160,6 +1163,7 @@ class DNFPayload(payload.PackagePayload):
         """Perform post-installation tasks."""
         # Write selected kickstart repos to target system
         log.info("self.addOns: %s" % str(self.addOns))
+        log.info("self._base.repos: %s" % str(self._base.repos))
         for ks_repo in (ks for ks in (self.getAddOnRepo(r) for r in self.addOns) if ks.install):
             log.info("processing %s" % str(ks_repo))
             if ks_repo.baseurl.startswith("nfs://"):
@@ -1172,8 +1176,8 @@ class DNFPayload(payload.PackagePayload):
                 if not repo:
                     log.info("not repo!")
                     continue
-            except (dnf.exceptions.RepoError, KeyError):
-                log.info("RepoError or KeyError")
+            except (dnf.exceptions.RepoError, KeyError) as e:
+                log.info("RepoError or KeyError: %s" % str(e))
                 continue
             repo_path = pyanaconda.iutil.getSysroot() + YUM_REPOS_DIR + "%s.repo" % repo.id
             log.info("repo_path = %s" % str(repo_path))
